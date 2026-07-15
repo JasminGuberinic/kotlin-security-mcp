@@ -59,6 +59,21 @@ The server locates its tools through environment variables:
 | `KSM_PLUGIN_JARS` | Comma-separated ruleset jar(s) (`scanner-all`) |
 | `KSM_DETEKT_CONFIG` | _(optional)_ path to a `detekt.yml` |
 
+## Use with Claude Code
+
+Register the server (stdio) and point it at your JDK, the detekt CLI jar, and
+the ruleset jar(s):
+
+```bash
+claude mcp add kotlin-security -s user \
+  -e KSM_JAVA=/path/to/java \
+  -e KSM_DETEKT_CLI_JAR=/path/to/detekt-cli-<ver>-all.jar \
+  -e KSM_PLUGIN_JARS=/path/to/scanner-core.jar,/path/to/scanner-spring-boot.jar,... \
+  -- /path/to/.venv/bin/kotlin-security-mcp
+```
+
+Then ask the agent to scan a file, e.g. _"run security_scan on src/Main.kt"_.
+
 ## Development
 
 ```bash
