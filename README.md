@@ -17,6 +17,7 @@ detekt ruleset (Spring / WebFlux / Ktor / Quarkus / Micronaut / Vert.x).
 | Tool | What it does |
 |------|--------------|
 | `security_scan(path)` | Scan a Kotlin file/directory and return every security finding. |
+| `review_diff(diff)` | Review a unified diff and flag only the issues the change *introduces*. |
 | `secure_pattern(task, framework?)` | Get the vetted secure way to do a risky task — *before* writing it. |
 
 `security_scan` returns **security** findings only — detekt's built-in

@@ -20,6 +20,7 @@ from pathlib import Path
 
 from code_security_mcp.adapters.detekt_analyzer import DetektAnalyzer, DetektConfig
 from code_security_mcp.adapters.pattern_catalog import InMemorySecurePatternCatalog
+from code_security_mcp.application.review_diff import ReviewDiffUseCase
 from code_security_mcp.application.scan_code import ScanCodeUseCase
 from code_security_mcp.application.suggest_secure_pattern import (
     SuggestSecurePatternUseCase,
@@ -59,6 +60,26 @@ def security_scan(path: str) -> dict:
 
 
 @mcp.tool()
+def review_diff(diff: str) -> dict:
+    """Security-review a unified diff: flag issues the change *introduces*.
+
+    Paste a unified diff (e.g. the output of `git diff`) after editing Kotlin
+    code. Only findings on lines the diff adds are returned, so the agent sees
+    exactly what its change is responsible for — a self-check before committing.
+
+    Args:
+        diff: A unified diff whose file paths are relative to the current
+            project directory.
+    """
+    use_case = _build_review_diff_use_case()
+    result = use_case.execute(diff)
+    return {
+        "count": result.count,
+        "findings": [_finding_to_dict(finding) for finding in result.findings],
+    }
+
+
+@mcp.tool()
 def secure_pattern(task: str, framework: str = "") -> dict:
     """Get the secure way to do a risky Kotlin/JVM task, before writing it.
 
@@ -82,11 +103,21 @@ def secure_pattern(task: str, framework: str = "") -> dict:
 
 
 def _build_use_case() -> ScanCodeUseCase:
-    """Composition root: assemble the concrete object graph from configuration.
+    """Composition root for the scan feature: wire the analyzer to the use case."""
+    return ScanCodeUseCase(_build_analyzer())
+
+
+def _build_review_diff_use_case() -> ReviewDiffUseCase:
+    """Composition root for the diff-review feature (same analyzer, narrowed)."""
+    return ReviewDiffUseCase(_build_analyzer())
+
+
+def _build_analyzer() -> DetektAnalyzer:
+    """Build the detekt analyzer from environment configuration.
 
     We read the "where is everything" paths from environment variables so the
     server runs on any machine without code changes. This is the single place
-    allowed to name concrete classes; everything downstream sees only ports.
+    allowed to name a concrete analyzer; everything downstream sees only ports.
     """
     config = DetektConfig(
         java_executable=Path(_required_env("KSM_JAVA")),
@@ -94,8 +125,7 @@ def _build_use_case() -> ScanCodeUseCase:
         plugin_jars=_paths_from_env("KSM_PLUGIN_JARS"),
         config_file=_optional_path_from_env("KSM_DETEKT_CONFIG"),
     )
-    analyzer = DetektAnalyzer(config)
-    return ScanCodeUseCase(analyzer)
+    return DetektAnalyzer(config)
 
 
 def _build_pattern_use_case() -> SuggestSecurePatternUseCase:
