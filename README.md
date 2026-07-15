@@ -17,12 +17,25 @@ detekt ruleset (Spring / WebFlux / Ktor / Quarkus / Micronaut / Vert.x).
 | Tool | What it does |
 |------|--------------|
 | `security_scan(path)` | Scan a Kotlin file/directory and return every security finding. |
+| `secure_pattern(task, framework?)` | Get the vetted secure way to do a risky task — *before* writing it. |
 
-Only **security** findings are returned — detekt's built-in style/complexity
-rules are switched off, so the agent gets signal, not noise.
+`security_scan` returns **security** findings only — detekt's built-in
+style/complexity rules are switched off, so the agent gets signal, not noise.
 
-_(More tools — `secure_pattern`, `review_diff`, and tree-sitter navigation —
-are on the roadmap.)_
+### Example
+
+> _"What's the secure way to create a session cookie in Vert.x?"_
+
+```kotlin
+// secure_pattern(task = "create a session cookie", framework = "vertx")  →  CWE-614
+val cookie = Cookie.cookie("session", token)
+    .setSecure(true)      // only sent over HTTPS
+    .setHttpOnly(true)    // hidden from JavaScript
+    .setSameSite(CookieSameSite.STRICT)
+response.addCookie(cookie)
+```
+
+_(More tools — `review_diff` and tree-sitter navigation — are on the roadmap.)_
 
 ## Architecture
 

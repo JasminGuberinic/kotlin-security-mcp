@@ -19,8 +19,13 @@ import os
 from pathlib import Path
 
 from kotlin_security_mcp.adapters.detekt_analyzer import DetektAnalyzer, DetektConfig
+from kotlin_security_mcp.adapters.pattern_catalog import InMemorySecurePatternCatalog
 from kotlin_security_mcp.application.scan_code import ScanCodeUseCase
+from kotlin_security_mcp.application.suggest_secure_pattern import (
+    SuggestSecurePatternUseCase,
+)
 from kotlin_security_mcp.domain.models import Finding
+from kotlin_security_mcp.domain.patterns import SecurePattern
 
 # The SDK renamed FastMCP -> MCPServer. Import the current name, but fall back
 # to the old one so the server keeps working on either SDK generation.
@@ -53,6 +58,29 @@ def security_scan(path: str) -> dict:
     }
 
 
+@mcp.tool()
+def secure_pattern(task: str, framework: str = "") -> dict:
+    """Get the secure way to do a risky Kotlin/JVM task, before writing it.
+
+    Ask "how do I do X securely" and get vetted before/after snippets and the
+    reason — so the agent writes the safe version the first time.
+
+    Args:
+        task: What you want to do, e.g. "create a session cookie", "store a JWT
+            secret", "configure CORS", "read the current user in reactive code".
+        framework: Optional stack to narrow results, e.g. "spring-webflux",
+            "ktor", "vertx". Leave empty to search all frameworks.
+    """
+    use_case = _build_pattern_use_case()
+    patterns = use_case.execute(framework or None, task)
+    return {
+        "task": task,
+        "framework": framework or "any",
+        "count": len(patterns),
+        "patterns": [_pattern_to_dict(pattern) for pattern in patterns],
+    }
+
+
 def _build_use_case() -> ScanCodeUseCase:
     """Composition root: assemble the concrete object graph from configuration.
 
@@ -70,6 +98,16 @@ def _build_use_case() -> ScanCodeUseCase:
     return ScanCodeUseCase(analyzer)
 
 
+def _build_pattern_use_case() -> SuggestSecurePatternUseCase:
+    """Composition root for the secure-pattern feature.
+
+    The catalog is self-contained (no external tools), so unlike the scanner
+    this needs no configuration — just wire the in-memory catalog to the use case.
+    """
+    catalog = InMemorySecurePatternCatalog()
+    return SuggestSecurePatternUseCase(catalog)
+
+
 def _finding_to_dict(finding: Finding) -> dict:
     """Flatten a domain Finding into a JSON-serializable dict for the agent.
 
@@ -84,6 +122,18 @@ def _finding_to_dict(finding: Finding) -> dict:
         "severity": finding.severity.value,
         "cwe": finding.cwe,
         "remediation": finding.remediation,
+    }
+
+
+def _pattern_to_dict(pattern: SecurePattern) -> dict:
+    """Flatten a SecurePattern into a JSON-serializable dict for the agent."""
+    return {
+        "framework": pattern.framework,
+        "task": pattern.task,
+        "insecure_example": pattern.insecure_example,
+        "secure_example": pattern.secure_example,
+        "explanation": pattern.explanation,
+        "cwe": pattern.cwe,
     }
 
 
