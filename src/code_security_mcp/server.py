@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from code_security_mcp.adapters.bandit_analyzer import PythonAnalyzer
 from code_security_mcp.adapters.detekt_analyzer import DetektAnalyzer, DetektConfig
 from code_security_mcp.adapters.pattern_catalog import InMemorySecurePatternCatalog
 from code_security_mcp.adapters.routing_analyzer import RoutingAnalyzer
@@ -133,11 +134,15 @@ def _build_analyzer() -> RoutingAnalyzer:
     if java is not None:
         analyzers.append(java)
 
+    python = _try_build_python()  # Python (Bandit)
+    if python is not None:
+        analyzers.append(python)
+
     if not analyzers:
         raise RuntimeError(
-            "No analyzer configured. Set the detekt variables (KSM_JAVA, "
-            "KSM_DETEKT_CLI_JAR, KSM_PLUGIN_JARS) and/or the SpotBugs variables "
-            "(KSM_JAVA, KSM_SPOTBUGS_JAR, KSM_FINDSECBUGS_JARS)."
+            "No analyzer configured. Configure detekt (KSM_JAVA, "
+            "KSM_DETEKT_CLI_JAR, KSM_PLUGIN_JARS) and/or SpotBugs (KSM_JAVA, "
+            "KSM_SPOTBUGS_JAR, KSM_FINDSECBUGS_JARS), and/or install bandit."
         )
     return RoutingAnalyzer(tuple(analyzers))
 
@@ -165,6 +170,16 @@ def _try_build_java() -> JavaAnalyzer | None:
         plugin_jars=_paths_from_env("KSM_FINDSECBUGS_JARS"),
     )
     return JavaAnalyzer(config)
+
+
+def _try_build_python() -> PythonAnalyzer | None:
+    """Build the Python analyzer, or None if Bandit is not installed.
+
+    Python needs no environment variables — if `bandit` is importable/on PATH,
+    the analyzer enables itself; otherwise it is simply left out.
+    """
+    analyzer = PythonAnalyzer()
+    return analyzer if analyzer.is_available() else None
 
 
 def _build_pattern_use_case() -> SuggestSecurePatternUseCase:

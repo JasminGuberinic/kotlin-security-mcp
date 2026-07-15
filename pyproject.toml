@@ -10,15 +10,15 @@
 [project]
 name = "code-security-mcp"
 version = "0.1.0"
-description = "A framework-aware security MCP server for AI coding agents: native JVM analysis (Kotlin via detekt, Java via SpotBugs+FindSecBugs), diff review, and secure patterns."
+description = "A security MCP server for AI coding agents: each language via its native analyzer — Kotlin (detekt), Java (SpotBugs+FindSecBugs), Python (Bandit) — plus diff review and secure patterns."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Jasmin Guberinic" }]
 keywords = [
-    "mcp", "model-context-protocol", "kotlin", "java", "jvm", "security", "sast",
-    "detekt", "spotbugs", "findsecbugs", "static-analysis", "spring-security",
-    "ai-agents", "claude-code",
+    "mcp", "model-context-protocol", "security", "sast", "static-analysis",
+    "kotlin", "java", "jvm", "python", "detekt", "spotbugs", "findsecbugs",
+    "bandit", "spring-security", "ai-agents", "claude-code",
 ]
 
 # Runtime dependencies. We keep this list deliberately tiny:
@@ -29,9 +29,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Python security analysis: installs Bandit so Python scanning works with no
+# extra setup (`pip install "code-security-mcp[python]"`).
+python = [
+    "bandit>=1.7",
+]
 # Tools needed only for development/testing, not at runtime.
 dev = [
     "pytest>=8.0",
+    "bandit>=1.7",
 ]
 
 # This exposes a console command `code-security-mcp` that starts the server.

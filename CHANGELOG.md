@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Python support** via a `PythonAnalyzer` adapter backed by Bandit (native,
+  source-based, no build step). It auto-enables whenever Bandit is installed
+  (`pip install "code-security-mcp[python]"`); no environment variables needed.
 - **Java support** via a `JavaAnalyzer` adapter backed by SpotBugs + FindSecBugs
   (native, security-focused). A `RoutingAnalyzer` now dispatches each target to
   the analyzers that support it, so `security_scan` handles Kotlin and Java
