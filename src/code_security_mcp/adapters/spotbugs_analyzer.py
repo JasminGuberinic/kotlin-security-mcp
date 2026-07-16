@@ -146,6 +146,12 @@ class JavaAnalyzer:
             f"-effort:{self._config.effort}",
             "-pluginList",
             self._joined(self._config.plugin_jars),
+            # Report only SECURITY-category bugs (FindSecBugs' findings). Without
+            # this, SpotBugs also emits correctness/style/malicious-code patterns
+            # (e.g. EI_EXPOSE_REP) — noise for a security tool. This is the Java
+            # equivalent of detekt's --disable-default-rulesets.
+            "-bugCategories",
+            "SECURITY",
             "-sarif",
             "-output",
             str(report_path),

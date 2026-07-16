@@ -113,6 +113,9 @@ def test_java_analyzer_command_is_well_formed(tmp_path):
     assert "-sarif" in command
     assert "-pluginList" in command
     assert str(plugin) in command
+    # Security-only: report just the SECURITY bug category.
+    assert "-bugCategories" in command
+    assert "SECURITY" in command
     # aux classpath is passed when configured, and the class root comes last.
     assert "-auxclasspath" in command
     assert command[-1] == str(classes)
