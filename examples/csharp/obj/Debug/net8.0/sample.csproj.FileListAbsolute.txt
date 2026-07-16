@@ -1,0 +1,11 @@
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/bin/Debug/net8.0/sample.deps.json
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/bin/Debug/net8.0/sample.dll
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/bin/Debug/net8.0/sample.pdb
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.GeneratedMSBuildEditorConfig.editorconfig
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.AssemblyInfoInputs.cache
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.AssemblyInfo.cs
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.csproj.CoreCompileInputs.cache
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.dll
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/refint/sample.dll
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/sample.pdb
+/Users/jasminguberinic/JasminPersonal/code-security-mcp/examples/csharp/obj/Debug/net8.0/ref/sample.dll

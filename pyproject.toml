@@ -46,6 +46,16 @@ dev = [
 [project.scripts]
 code-security-mcp = "code_security_mcp.server:main"
 
+[tool.pytest.ini_options]
+# Integration tests run the REAL analyzers and need their tools installed, so we
+# exclude them from the default run. Execute them explicitly with:
+#   pytest -m integration
+# Each one still self-skips when its particular tool/env is not configured.
+markers = [
+    "integration: exercises a real analyzer end-to-end (needs the tool present)",
+]
+addopts = "-m 'not integration'"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

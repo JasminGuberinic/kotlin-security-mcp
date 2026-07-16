@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added (continued)
+- **Integration tests** (`pytest -m integration`): run the real analyzers
+  (detekt, SpotBugs, Bandit, Roslyn, ESLint) over the `examples/` fixtures and
+  assert the expected findings. They self-skip when a tool is not configured, so
+  the default (hermetic) suite and CI stay fast and green.
 - **One-command setup** (`scripts/setup.sh`): downloads every analyzer into an
   isolated cache (Kotlin ruleset + detekt from Maven Central/GitHub, SpotBugs +
   FindSecBugs; optional isolated .NET SDK and ESLint) and prints the

@@ -159,9 +159,16 @@ python3 -m venv .venv
 .venv/bin/pytest
 ```
 
-The test suite is hermetic — it uses fake analyzers and hand-built SARIF / diff /
-Bandit-JSON fixtures, so it needs no external analyzer (JDK, detekt, SpotBugs, or
-Bandit) to run.
+The default suite is hermetic — it uses fake analyzers and hand-built SARIF /
+diff / Bandit-JSON fixtures, so it needs no external analyzer to run.
+
+**Integration tests** run the real analyzers over `examples/` and assert the
+expected findings. They self-skip when a tool is not configured, so run them
+once you have set up the analyzers (e.g. via `./scripts/setup.sh`):
+
+```bash
+.venv/bin/pytest -m integration
+```
 
 ## Roadmap
 
