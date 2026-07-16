@@ -9,12 +9,12 @@ isolation). This file owns everything JVM-specific; nothing above it does.
 from __future__ import annotations
 
 import json
-import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from code_security_mcp.adapters.language import target_has_extension
+from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.adapters.sarif import parse_sarif_report
 from code_security_mcp.domain.models import ScanResult
 
@@ -81,7 +81,7 @@ class DetektAnalyzer:
         success by whether a readable SARIF report was actually produced.
         """
         command = self._build_command(target, report_path)
-        subprocess.run(command, capture_output=True, text=True, check=False)
+        run_with_timeout(command)
 
     def _build_command(self, target: Path, report_path: Path) -> list[str]:
         """Assemble the exact `java -jar detekt-cli ...` argument list.

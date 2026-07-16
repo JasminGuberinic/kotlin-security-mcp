@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.adapters.sarif import parse_sarif_report
 from code_security_mcp.domain.models import ScanResult
 
@@ -99,9 +99,7 @@ class CSharpAnalyzer:
         with our other analyzers, we ignore the exit code and rely on the report.
         """
         command = self._build_command(project, report_path)
-        subprocess.run(
-            command, capture_output=True, text=True, check=False, env=self._subprocess_env()
-        )
+        run_with_timeout(command, env=self._subprocess_env())
 
     def _build_command(self, project: Path, report_path: Path) -> list[str]:
         """Assemble the `dotnet build ... -p:ErrorLog=...` argument list."""

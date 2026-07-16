@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -21,6 +20,7 @@ from pathlib import Path
 
 from code_security_mcp.adapters.bandit_report import parse_bandit_report
 from code_security_mcp.adapters.language import target_has_extension
+from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.domain.models import ScanResult
 
 # The file types Bandit analyzes.
@@ -69,7 +69,7 @@ class PythonAnalyzer:
         JSON report was written.
         """
         command = self._build_command(target, report_path)
-        subprocess.run(command, capture_output=True, text=True, check=False)
+        run_with_timeout(command)
 
     def _build_command(self, target: Path, report_path: Path) -> list[str]:
         """Assemble the `bandit ... -f json -o <report>` argument list.

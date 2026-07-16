@@ -42,7 +42,12 @@ except ImportError:  # pragma: no cover - depends on installed SDK version
     from mcp.server.fastmcp import FastMCP as MCPServer
 
 # The server instance. The name is what shows up in the client's tool list.
-mcp = MCPServer("kotlin-security-mcp")
+mcp = MCPServer("code-security-mcp")
+
+# Upper bound on findings returned in one response. A scan of a large, messy
+# repository can produce thousands of findings; returning them all would bloat
+# the agent's context for little gain. We cap the list and flag truncation.
+_MAX_FINDINGS = 500
 
 
 @mcp.tool()
@@ -58,11 +63,7 @@ def security_scan(path: str) -> dict:
     """
     use_case = _build_use_case()
     result = use_case.execute(Path(path))
-    return {
-        "target": path,
-        "count": result.count,
-        "findings": [_finding_to_dict(finding) for finding in result.findings],
-    }
+    return {"target": path, **_findings_payload(result)}
 
 
 @mcp.tool()
@@ -79,10 +80,7 @@ def review_diff(diff: str) -> dict:
     """
     use_case = _build_review_diff_use_case()
     result = use_case.execute(diff)
-    return {
-        "count": result.count,
-        "findings": [_finding_to_dict(finding) for finding in result.findings],
-    }
+    return _findings_payload(result)
 
 
 @mcp.tool()
@@ -225,6 +223,20 @@ def _build_pattern_use_case() -> SuggestSecurePatternUseCase:
     """
     catalog = InMemorySecurePatternCatalog()
     return SuggestSecurePatternUseCase(catalog)
+
+
+def _findings_payload(result) -> dict:
+    """Shape a ScanResult for a tool response, capping the findings list.
+
+    `count` is always the true total; `findings` is at most `_MAX_FINDINGS`, and
+    `truncated` tells the agent when it is seeing only a prefix.
+    """
+    shown = result.findings[:_MAX_FINDINGS]
+    return {
+        "count": result.count,
+        "truncated": result.count > _MAX_FINDINGS,
+        "findings": [_finding_to_dict(finding) for finding in shown],
+    }
 
 
 def _finding_to_dict(finding: Finding) -> dict:

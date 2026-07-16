@@ -15,12 +15,12 @@ It runs on source (no build). Two ESLint details this adapter handles:
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from code_security_mcp.adapters.eslint_report import parse_eslint_report
 from code_security_mcp.adapters.language import target_has_extension
+from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.domain.models import ScanResult
 
 # The file types we route to ESLint.
@@ -57,12 +57,10 @@ class JavaScriptAnalyzer:
     def scan(self, target: Path) -> ScanResult:
         """Run ESLint over `target` and return the findings it reports."""
         working_dir, lint_path = self._working_dir_and_path(target)
-        completed = subprocess.run(
-            self._build_command(lint_path),
-            capture_output=True,
-            text=True,
-            check=False,  # ESLint exits non-zero when it finds problems
-            cwd=str(working_dir),
+        # ESLint exits non-zero when it finds problems; run_with_timeout never
+        # raises on that, only on a genuine timeout.
+        completed = run_with_timeout(
+            self._build_command(lint_path), cwd=str(working_dir)
         )
         return self._parse_output(completed.stdout, completed.stderr)
 

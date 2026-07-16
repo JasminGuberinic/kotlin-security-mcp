@@ -18,11 +18,11 @@ As with detekt, SpotBugs emits SARIF, so we reuse the very same parser.
 from __future__ import annotations
 
 import json
-import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.adapters.sarif import parse_sarif_report
 from code_security_mcp.domain.models import ScanResult
 
@@ -132,7 +132,7 @@ class JavaAnalyzer:
         was written.
         """
         command = self._build_command(class_roots, report_path)
-        subprocess.run(command, capture_output=True, text=True, check=False)
+        run_with_timeout(command)
 
     def _build_command(
         self, class_roots: tuple[Path, ...], report_path: Path
