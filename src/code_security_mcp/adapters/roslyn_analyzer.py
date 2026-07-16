@@ -27,9 +27,6 @@ from code_security_mcp.adapters.process import run_with_timeout
 from code_security_mcp.adapters.sarif import parse_sarif_report
 from code_security_mcp.domain.models import ScanResult
 
-# The project/solution files that anchor a C# build.
-_CSHARP_PROJECT_EXTENSIONS: tuple[str, ...] = (".sln", ".csproj")
-
 
 @dataclass(frozen=True)
 class RoslynConfig:
@@ -61,35 +58,71 @@ class CSharpAnalyzer:
         self._config = config
 
     def supports(self, target: Path) -> bool:
-        """True when the SDK is present AND a C# project/solution is resolvable."""
+        """True when the SDK is present AND at least one C# project is resolvable."""
         if not self._config.dotnet_executable.exists():
             return False
-        return self._resolve_project(target) is not None
+        return len(self._resolve_projects(target)) > 0
 
     def scan(self, target: Path) -> ScanResult:
-        """Build the resolved project with security analyzers and read the SARIF."""
-        project = self._resolve_project(target)
-        if project is None:
+        """Build each resolved project with security analyzers, merge the SARIFs.
+
+        We build project-by-project rather than the whole solution because a
+        solution build makes every project write to the *same* ErrorLog file,
+        so only the last one survives. Per-project builds give each its own
+        report, which we then merge.
+        """
+        projects = self._resolve_projects(target)
+        if not projects:
             raise RuntimeError(
-                f"No .sln or .csproj found under {target}; C# analysis needs a "
-                "buildable project."
+                f"No .csproj found under {target}; C# analysis needs a buildable "
+                "project."
             )
+        findings: list = []
         with tempfile.TemporaryDirectory() as work_dir:
-            report_path = Path(work_dir) / "report.sarif"
-            self._run_build(project, report_path)
-            return self._read_report(report_path)
+            for index, project in enumerate(projects):
+                report_path = Path(work_dir) / f"report-{index}.sarif"
+                self._run_build(project, report_path)
+                if report_path.exists():
+                    findings.extend(self._read_report(report_path).findings)
+        return ScanResult(findings=tuple(findings))
 
-    def _resolve_project(self, target: Path) -> Path | None:
-        """Find the project/solution to build for `target`.
+    def _resolve_projects(self, target: Path) -> tuple[Path, ...]:
+        """Find the buildable C# projects for `target`, excluding test projects.
 
-        A solution is preferred (it covers every project); otherwise the first
-        `.csproj`. A single project/solution file is used as-is.
+        A `.csproj` is used as-is; a `.sln` is expanded to its projects; a
+        directory contributes every `.csproj` under it. Test projects are skipped
+        — their analyzer packages (xUnit, etc.) add non-security diagnostics and
+        they are not the code we are securing.
         """
         if target.is_file():
-            return target if target.suffix in _CSHARP_PROJECT_EXTENSIONS else None
+            if target.suffix == ".csproj":
+                return (target,)
+            if target.suffix == ".sln":
+                return self._projects_in_solution(target)
+            return ()
         if not target.is_dir():
-            return None
-        return next(target.rglob("*.sln"), None) or next(target.rglob("*.csproj"), None)
+            return ()
+        found = tuple(target.rglob("*.csproj"))
+        return tuple(p for p in found if not self._is_test_project(p))
+
+    def _projects_in_solution(self, solution: Path) -> tuple[Path, ...]:
+        """Extract the .csproj paths listed in a .sln file (skipping test ones)."""
+        projects: list[Path] = []
+        for line in solution.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if not line.startswith("Project(") or ".csproj" not in line:
+                continue
+            fields = line.split(",")
+            if len(fields) < 2:
+                continue
+            relative = fields[1].strip().strip('"').replace("\\", "/")
+            candidate = (solution.parent / relative).resolve()
+            if candidate.exists() and not self._is_test_project(candidate):
+                projects.append(candidate)
+        return tuple(projects)
+
+    def _is_test_project(self, project: Path) -> bool:
+        """Heuristic: a project whose file name mentions 'test' is a test project."""
+        return "test" in project.name.lower()
 
     def _run_build(self, project: Path, report_path: Path) -> None:
         """Run `dotnet build` with security analyzers, writing SARIF.
@@ -137,9 +170,11 @@ class CSharpAnalyzer:
     def _read_report(self, report_path: Path) -> ScanResult:
         """Load and parse the SARIF report, keeping only security findings.
 
-        A build emits both analyzer diagnostics (the CA security rules we want)
-        and plain compiler diagnostics (CSxxxx — e.g. "no Main method"). The
-        latter are build noise, not security issues, so we drop them.
+        A build emits many diagnostic kinds: the .NET security analyzer rules we
+        want (CA2100/CA3xxx/CA5xxx), plain compiler diagnostics (CSxxxx), and any
+        third-party analyzers a project references (xUnit's xUnit####, StyleCop's
+        SA####, …). Since we enabled only the security category, we keep just the
+        CA-prefixed rules and drop everything else as noise.
         """
         if not report_path.exists():
             raise RuntimeError(
@@ -151,11 +186,16 @@ class CSharpAnalyzer:
         findings = tuple(
             finding
             for finding in parsed.findings
-            if not _is_compiler_diagnostic(finding.rule_id)
+            if _is_security_analyzer_rule(finding.rule_id)
         )
         return ScanResult(findings=findings)
 
 
-def _is_compiler_diagnostic(rule_id: str) -> bool:
-    """True for C# compiler diagnostics like "CS5001" (not analyzer findings)."""
-    return rule_id.startswith("CS") and rule_id[2:].isdigit()
+def _is_security_analyzer_rule(rule_id: str) -> bool:
+    """True for a .NET analyzer rule like "CA5351".
+
+    With AnalysisMode=None + AnalysisModeSecurity=All, the only CA rules that
+    fire are security ones — so a CA#### id is exactly what we want to keep,
+    while compiler (CS) and third-party (xUnit/StyleCop) diagnostics are dropped.
+    """
+    return rule_id.startswith("CA") and rule_id[2:].isdigit()

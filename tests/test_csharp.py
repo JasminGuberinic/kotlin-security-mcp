@@ -5,15 +5,8 @@ from pathlib import Path
 from code_security_mcp.adapters.roslyn_analyzer import (
     CSharpAnalyzer,
     RoslynConfig,
-    _is_compiler_diagnostic,
+    _is_security_analyzer_rule,
 )
-
-
-def test_compiler_diagnostics_are_recognized():
-    # Compiler diagnostics (CS####) are build noise, not security findings.
-    assert _is_compiler_diagnostic("CS5001") is True
-    # Analyzer security rules (CA####) must be kept.
-    assert _is_compiler_diagnostic("CA5351") is False
 
 
 def _config_with_sdk(tmp_path, **overrides) -> RoslynConfig:
@@ -26,27 +19,39 @@ def _config_with_sdk(tmp_path, **overrides) -> RoslynConfig:
     return RoslynConfig(**base)
 
 
+def test_security_rules_are_recognized():
+    # .NET security analyzer rules (CA####) are kept.
+    assert _is_security_analyzer_rule("CA5351") is True
+    # Compiler diagnostics (CS####) and third-party analyzers are dropped.
+    assert _is_security_analyzer_rule("CS5001") is False
+    assert _is_security_analyzer_rule("xUnit2013") is False
+    assert _is_security_analyzer_rule("SA1200") is False
+
+
 def test_unsupported_when_sdk_missing(tmp_path):
     config = RoslynConfig(dotnet_root=tmp_path / "no-sdk")
     (tmp_path / "app.csproj").write_text("<Project/>")
     assert CSharpAnalyzer(config).supports(tmp_path) is False
 
 
-def test_prefers_solution_over_project(tmp_path):
-    (tmp_path / "app.csproj").write_text("<Project/>")
-    (tmp_path / "app.sln").write_text("")
+def test_resolves_projects_and_skips_tests(tmp_path):
+    (tmp_path / "Web").mkdir()
+    (tmp_path / "Web" / "Web.csproj").write_text("<Project/>")
+    (tmp_path / "UnitTests").mkdir()
+    (tmp_path / "UnitTests" / "UnitTests.csproj").write_text("<Project/>")
     analyzer = CSharpAnalyzer(_config_with_sdk(tmp_path))
 
-    resolved = analyzer._resolve_project(tmp_path)
+    projects = analyzer._resolve_projects(tmp_path)
 
-    assert resolved is not None and resolved.suffix == ".sln"
+    names = {p.name for p in projects}
+    assert names == {"Web.csproj"}  # the test project is skipped
     assert analyzer.supports(tmp_path) is True
 
 
 def test_loose_cs_file_is_not_a_project(tmp_path):
     (tmp_path / "Program.cs").write_text("class C {}")
     analyzer = CSharpAnalyzer(_config_with_sdk(tmp_path))
-    # A bare .cs file is not buildable on its own → unsupported.
+    # A bare .cs file (no .csproj) is not buildable on its own → unsupported.
     assert analyzer.supports(tmp_path) is False
 
 
