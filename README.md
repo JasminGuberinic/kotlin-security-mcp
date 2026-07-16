@@ -19,7 +19,17 @@ security tool**, not one generic scanner stretched across everything.
 > _New languages arrive as their own native analyzer — never a single
 > lowest-common-denominator scanner._
 
-## Quickstart
+## Install
+
+```bash
+pipx install code-security-mcp        # or:  uvx code-security-mcp
+```
+
+This installs the `code-security-mcp` server. Python analysis works immediately
+(`pipx inject code-security-mcp bandit`); the JVM/.NET/JS analyzers are external
+tools you point at with env vars — the setup script below fetches them for you.
+
+## Quickstart (from source, with all analyzers)
 
 ```bash
 git clone https://github.com/JasminGuberinic/code-security-mcp
@@ -31,8 +41,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[python]"
 ./scripts/setup.sh --with-dotnet --with-eslint  # + C# and JS/TS (optional)
 ```
 
-The script prints the `claude mcp add …` command to paste. Python works out of
-the box — the `[python]` extra installs Bandit.
+The script prints the `claude mcp add …` command to paste.
 
 ## Why
 
@@ -70,6 +79,24 @@ built-in style/complexity rules are switched off, so the agent gets signal, not
 noise.
 
 ### Example
+
+The agent calls `security_scan` and gets structured findings back:
+
+```jsonc
+// security_scan("src/main/kotlin/HttpClient.kt")
+{
+  "target": "src/main/kotlin/HttpClient.kt",
+  "count": 2,
+  "findings": [
+    { "rule_id": "WebClientInsecureSsl", "line": 42, "severity": "error",
+      "cwe": "CWE-295", "message": "Reactor-Netty WebClient trusts all certificates." },
+    { "rule_id": "HardcodedJwtSecret", "line": 88, "severity": "error",
+      "cwe": "CWE-798", "message": "Hard-coded JWT signing secret." }
+  ]
+}
+```
+
+…and it can ask for the fix before writing it:
 
 > _"What's the secure way to create a session cookie in Vert.x?"_
 

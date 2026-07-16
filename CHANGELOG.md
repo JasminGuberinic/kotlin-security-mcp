@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added (continued)
+- **PyPI packaging**: builds a clean wheel/sdist (verified with `twine check`)
+  and a `Release` GitHub Actions workflow that publishes via PyPI Trusted
+  Publishing (OIDC — no stored token) when a GitHub Release is published.
+  README gains `pipx`/`uvx` install instructions and a `security_scan` demo.
 - **Integration tests** (`pytest -m integration`): run the real analyzers
   (detekt, SpotBugs, Bandit, Roslyn, ESLint) over the `examples/` fixtures and
   assert the expected findings. They self-skip when a tool is not configured, so
